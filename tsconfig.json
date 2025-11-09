@@ -9,7 +9,7 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-
+    "types": ["next-auth", "node"],
     /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -36,7 +36,8 @@
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "prisma/seed.js"
   ],
   "exclude": ["node_modules"]
 }
