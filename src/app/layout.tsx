@@ -12,7 +12,8 @@ const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
 });
-export const iranSans = localFont({
+
+const iranSans = localFont({
   src: [
     {
       path: "../../public/fonts/IRANSansXFaNum-Thin.woff",
@@ -63,12 +64,13 @@ export const iranSans = localFont({
   variable: "--font-iransans",
   display: "swap",
 });
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
-      <body className={`bg-[#F9FAFB]}`}>
+    <html lang="en" className={`${geist.variable} ${iranSans.variable}`}>
+      <body className="bg-[#F9FAFB]">
         <Providers>
           <TRPCReactProvider>
             <DynamicTitle />

@@ -12,25 +12,28 @@ import RolesPage from "./RolesPage";
 import ITDocumentsAdminPage from "./ITPage";
 import type { TabName } from "../Utils/Types";
 
-// Storage key
 const ACTIVE_TAB_KEY = "admin-active-tab";
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const [activeTab, setActiveTab] = useState<TabName>("Contacts");
   const [availableTabs, setAvailableTabs] = useState<TabName[]>([]);
+  const [activeTab, setActiveTab] = useState<TabName>("Contacts");
 
-  // Redirect unauthenticated
+  // Client-only state for searchParams
+  const [searchParamsReady, setSearchParamsReady] = useState(false);
+  const [searchParams, setSearchParams] = useState<URLSearchParams | null>(
+    null,
+  );
+
+  // Redirect unauthenticated users
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
     }
   }, [status, router]);
 
-  // Determine available tabs
+  // Determine available tabs based on role/permissions
   useEffect(() => {
     if (!session?.user) return;
 
@@ -48,15 +51,20 @@ export default function AdminPage() {
     setAvailableTabs(tabs);
   }, [session]);
 
-  // Restore activeTab from: URL → localStorage → default
+  // Initialize searchParams on client
   useEffect(() => {
-    if (availableTabs.length === 0) return;
+    setSearchParams(useSearchParams());
+    setSearchParamsReady(true);
+  }, []);
 
-    const urlTab = searchParams.get("tab") as TabName | null;
+  // Restore activeTab from URL → localStorage → default
+  useEffect(() => {
+    if (!searchParamsReady || availableTabs.length === 0) return;
+
+    const urlTab = searchParams!.get("tab") as TabName | null;
     const storedTab = localStorage.getItem(ACTIVE_TAB_KEY) as TabName | null;
 
-    let initialTab: TabName | null = null;
-
+    let initialTab: TabName;
     if (urlTab && availableTabs.includes(urlTab)) {
       initialTab = urlTab;
     } else if (storedTab && availableTabs.includes(storedTab)) {
@@ -66,28 +74,25 @@ export default function AdminPage() {
     }
 
     setActiveTab(initialTab);
-  }, [availableTabs, searchParams]);
+  }, [availableTabs, searchParamsReady, searchParams]);
 
   // Sync activeTab → URL + localStorage
   useEffect(() => {
-    if (!activeTab || availableTabs.length === 0) return;
+    if (!searchParamsReady || !activeTab || availableTabs.length === 0) return;
 
-    // Update URL
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams!);
     params.set("tab", activeTab);
     router.replace(`/admin?${params.toString()}`, { scroll: false });
 
-    // Update localStorage
     localStorage.setItem(ACTIVE_TAB_KEY, activeTab);
-  }, [activeTab, availableTabs, router, searchParams]);
+  }, [activeTab, availableTabs, router, searchParamsReady, searchParams]);
 
-  // Tab change handler
   const handleTabChange = (tab: TabName) => {
     setActiveTab(tab);
   };
 
-  // Render content
-  function renderContent() {
+  // Render the active tab content
+  const renderContent = () => {
     switch (activeTab) {
       case "Contacts":
         return <ContactsPage />;
@@ -102,12 +107,11 @@ export default function AdminPage() {
       default:
         return null;
     }
-  }
+  };
 
   if (status === "loading") return <div className="p-4">Loading...</div>;
-  if (!availableTabs.length) {
+  if (!availableTabs.length)
     return <div className="p-4 text-gray-500">You don’t have access here.</div>;
-  }
 
   return (
     <div>
