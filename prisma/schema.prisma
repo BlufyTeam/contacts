@@ -142,3 +142,11 @@ model Permission {
   roles       Role[]     @relation("RolePermissions")
 }
 
+model ITDocument {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  fileUrl     String
+  fileType    String
+  createdAt   DateTime @default(now())
+}

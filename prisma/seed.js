@@ -13,6 +13,7 @@ async function main() {
     { name: "contacts" },
     { name: "users" },
     { name: "organizations" },
+    { name: "it" },
   ];
 
   for (const perm of permissions) {

@@ -13,9 +13,12 @@ import {
   Plus,
   Trash2Icon,
   Languages,
-  UserLock,
+  User,
+  LogOut,
+  Settings,
   ArrowUp,
   ArrowDown,
+  Network,
 } from "lucide-react";
 import Image from "next/image";
 import loading from "~/animations/loading.json";
@@ -31,6 +34,18 @@ import {
 import { Input } from "~/components/ui/input";
 import useContactExtras from "./Utils/useContactExtras";
 import type { ContactExtrasApi } from "./Utils/useContactExtras";
+import { useSession, signOut } from "next-auth/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import { Tooltip } from "@radix-ui/react-tooltip";
+import { TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 
 type Contact = {
   id: string;
@@ -147,6 +162,8 @@ export default function ContactsPage() {
   const extrasApi = useContactExtras();
   const { data: contacts, isLoading, error } = api.contacts.getAll.useQuery();
   const { data: organizations } = api.organization.getAll.useQuery();
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -167,7 +184,6 @@ export default function ContactsPage() {
     }
   }, [language]);
 
-  // Handle sorting
   const handleSort = (field: keyof Contact | "organization") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -188,7 +204,6 @@ export default function ContactsPage() {
 
   const sortedAndFilteredContacts = useMemo(() => {
     if (!contacts) return [];
-
     const filtered = contacts.filter((contact) => {
       const nameToSearch =
         language === "FA"
@@ -207,11 +222,9 @@ export default function ContactsPage() {
       return matchesSearch && matchesOrg;
     });
 
-    // Sort the filtered list
     return [...filtered].sort((a, b) => {
       let aVal: string | null = "";
       let bVal: string | null = "";
-
       switch (sortField) {
         case "fullName":
           aVal = language === "FA" ? a.fullName : (a.fullnameEn ?? a.fullName);
@@ -234,14 +247,12 @@ export default function ContactsPage() {
             (language === "FA" ? "بدون سازمان" : "No Organization");
           break;
       }
-
       if (!aVal || !bVal) return 0;
       const comparison = aVal.localeCompare(bVal);
       return sortDirection === "asc" ? comparison : -comparison;
     });
   }, [contacts, search, filterOrgId, language, sortField, sortDirection]);
 
-  // Group sorted contacts
   const groupedContacts = useMemo(() => {
     const groups: Record<string, Contact[]> = {};
     sortedAndFilteredContacts.forEach((contact) => {
@@ -271,15 +282,67 @@ export default function ContactsPage() {
         fontFamily: language === "FA" ? "iranSans, sans-serif" : "inherit",
       }}
     >
-      {/* ... (Login, Logo, Controls remain unchanged) ... */}
-      <div className="flex pt-2">
-        <Link href="/login">
-          <div className="flex items-center justify-center">
-            <UserLock size={"20px"}></UserLock>Login
-          </div>
-        </Link>
+      {/* === AUTH SECTION === */}
+      <div className="flex justify-end pt-2">
+        <div className="w-full">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button className="cursor-pointer">
+                <Link href={"/it"}>
+                  <div className="flex">
+                    <Network className="mr-2"></Network> IT
+                  </div>
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>IT</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        {status === "loading" ? (
+          <div className="bg-muted h-8 w-8 animate-pulse rounded-full" />
+        ) : session ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <User className="h-5 w-5" />
+                <span className="sr-only">User menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                {session.user?.name || session.user?.email}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onClick={() => router.push("/admin")}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {language === "FA" ? "پنل مدیریت" : "Admin Panel"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="cursor-pointer text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                {language === "FA" ? "خروج" : "Logout"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Link href="/login">
+            <Button variant="outline" size="sm">
+              <User className="mr-2 h-4 w-4" />
+              {language === "FA" ? "ورود" : "Login"}
+            </Button>
+          </Link>
+        )}
       </div>
 
+      {/* Logo */}
       <div className="flex justify-center">
         <Image
           src="/logo.png"
@@ -290,6 +353,7 @@ export default function ContactsPage() {
         />
       </div>
 
+      {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <ToggleGroup
@@ -352,13 +416,14 @@ export default function ContactsPage() {
         </Button>
       </div>
 
+      {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center">
           <Lottie animationData={loading} loop autoplay className="h-40 w-40" />
         </div>
       ) : (
         <AnimatePresence mode="wait">
-          {/* Card and List modes unchanged */}
+          {/* Card Mode */}
           {viewMode === "card" && (
             <motion.div
               key="card"
@@ -404,7 +469,7 @@ export default function ContactsPage() {
             </motion.div>
           )}
 
-          {/* TABLE MODE - NOW SORTABLE */}
+          {/* Table Mode - Sortable */}
           {viewMode === "table" && (
             <motion.div
               key="table"
@@ -493,7 +558,7 @@ export default function ContactsPage() {
             </motion.div>
           )}
 
-          {/* List mode unchanged */}
+          {/* List Mode */}
           {viewMode === "list" && (
             <motion.div
               key="list"

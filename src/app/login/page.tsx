@@ -3,6 +3,8 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,6 +30,9 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto mt-20 max-w-md rounded-lg border p-6 shadow-md">
+      <Link href={"/"}>
+        <ArrowLeft></ArrowLeft>
+      </Link>
       <h1 className="mb-4 text-2xl font-bold">Login</h1>
       <form onSubmit={handleLogin}>
         <label className="mb-2 block">

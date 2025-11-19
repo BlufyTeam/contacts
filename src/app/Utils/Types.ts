@@ -1,1 +1,1 @@
-export type TabName = "Contacts" | "Users" | "Organizations" | "Roles";
+export type TabName = "Contacts" | "IT" | "Users" | "Organizations" | "Roles";
