@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useMemo } from "react";
 import { api } from "~/trpc/react";
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
@@ -41,7 +40,6 @@ type Contact = {
   personalMail?: string | null;
 };
 
-// Mapping of database field names to user-friendly labels
 const fieldLabels: Record<string, string> = {
   fullName: "Full Name",
   fullnameEn: "Full Name (English)",
@@ -89,27 +87,35 @@ export default function ContactsPage() {
       | "mobile";
     direction: "asc" | "desc";
   }>({ field: "fullName", direction: "asc" });
+
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  // Email validation state
+  const [emailError, setEmailError] = useState("");
+
   const { data: organizations } = api.organization.getAll.useQuery();
   const { data: contacts, isLoading, error } = api.contacts.getAll.useQuery();
-
   const utils = api.useContext();
+
   const createMutation = api.contacts.create.useMutation({
     onSuccess: () => {
       utils.contacts.getAll.invalidate();
       setShowDialog(false);
+      setEmailError("");
     },
   });
+
   const updateMutation = api.contacts.update.useMutation({
     onSuccess: () => {
       utils.contacts.getAll.invalidate();
       setEditingContact(null);
       setShowDialog(false);
+      setEmailError("");
     },
   });
+
   const deleteMutation = api.contacts.delete.useMutation({
     onSuccess: () => {
       utils.contacts.getAll.invalidate();
@@ -165,11 +171,22 @@ export default function ContactsPage() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
     const formData = new FormData(e.currentTarget);
+    const email = (formData.get("email") as string)?.trim();
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    setEmailError("");
+
     const base = {
       fullName: formData.get("fullName") as string,
       fullnameEn: formData.get("fullnameEn") as string,
-      email: formData.get("email") as string,
+      email: email,
       extension: formData.get("extension") as string,
       organizationId: formData.get("organizationId") as string,
     };
@@ -204,7 +221,7 @@ export default function ContactsPage() {
       "SOS",
       "personalMail",
     ].forEach((field) => {
-      extras[field] = (formData.get(field) as string) || "";
+      extras[field] = (formData.get(field) as string) || null;
     });
 
     if (editingContact) {
@@ -226,6 +243,7 @@ export default function ContactsPage() {
             onClick={() => {
               setEditingContact(null);
               setShowDialog(true);
+              setEmailError("");
             }}
             className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
@@ -238,7 +256,6 @@ export default function ContactsPage() {
             Export to Excel
           </button>
         </div>
-
         <div className="flex space-x-2">
           <input
             type="text"
@@ -327,6 +344,7 @@ export default function ContactsPage() {
                         e.stopPropagation();
                         setEditingContact(contact);
                         setShowDialog(true);
+                        setEmailError("");
                       }}
                       className="text-blue-600 hover:text-blue-900"
                     >
@@ -360,7 +378,6 @@ export default function ContactsPage() {
                     </button>
                   </td>
                 </tr>
-
                 {expanded === contact.id && (
                   <tr>
                     <td colSpan={7} className="border bg-gray-50 p-3">
@@ -393,10 +410,14 @@ export default function ContactsPage() {
         </table>
       )}
 
+      {/* Dialog */}
       {showDialog && (
         <div
           className="bg-opacity-30 fixed inset-0 z-50 flex items-center justify-center bg-black"
-          onClick={() => setShowDialog(false)}
+          onClick={() => {
+            setShowDialog(false);
+            setEmailError("");
+          }}
         >
           <div
             className="max-h-[90vh] w-[600px] overflow-y-auto rounded bg-white p-6 shadow-md"
@@ -442,6 +463,8 @@ export default function ContactsPage() {
               ].map((field) => (
                 <label key={field} className="block">
                   {fieldLabels[field] || field}
+
+                  {/* Organization Dropdown */}
                   {field === "organizationId" ? (
                     <select
                       name="organizationId"
@@ -456,7 +479,35 @@ export default function ContactsPage() {
                         </option>
                       ))}
                     </select>
+                  ) : // Gender Dropdown
+                  field === "gender" ? (
+                    <select
+                      name="gender"
+                      defaultValue={editingContact?.gender ?? ""}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    >
+                      <option value="">Select gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  ) : // Email Field with Validation
+                  field === "email" ? (
+                    <>
+                      <input
+                        name="email"
+                        type="text"
+                        defaultValue={editingContact?.email ?? ""}
+                        className="mt-1 w-full rounded border px-2 py-1"
+                        required
+                      />
+                      {emailError && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {emailError}
+                        </p>
+                      )}
+                    </>
                   ) : (
+                    // All other text inputs
                     <input
                       name={field}
                       type="text"
@@ -470,7 +521,10 @@ export default function ContactsPage() {
               <div className="fixed right-6 bottom-6 flex justify-end space-x-2">
                 <button
                   type="button"
-                  onClick={() => setShowDialog(false)}
+                  onClick={() => {
+                    setShowDialog(false);
+                    setEmailError("");
+                  }}
                   className="rounded border border-gray-300 px-4 py-2 text-white"
                 >
                   Cancel
